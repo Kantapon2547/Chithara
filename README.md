@@ -37,7 +37,7 @@ It is recommended to use a virtual environment to manage dependencies.
    ```bash
    # Clone the project
    git clone https://github.com/Kantapon2547/Chithara.git
-   cd Chithara/chithara
+   cd Chithara/backend
 
   # Create Virtual Environment
   python -m venv venv
@@ -95,3 +95,91 @@ Screenshots of CRUD operations are included to demonstrate:
 * Deleting records
 
 ![](Screenshot/Delete_Album.jpg)
+
+xercise 4
+
+### Files added (`generation/` app)
+
+| File | Purpose |
+|---|---|
+| `generation/strategies.py` | **Strategy interface** + both concrete strategies |
+| `generation/selector.py` | **Centralised strategy selector** – reads `GENERATOR_STRATEGY` |
+| `generation/models.py` | `GenerationJob` model – persists taskId + status |
+| `generation/services.py` | Application service – wires strategy to model |
+| `generation/admin.py` | Django Admin for `GenerationJob` |
+| `generation/migrations/` | DB migration for `GenerationJob` |
+| `generation/management/commands/demo_generation.py` | `manage.py demo_generation` |
+
+---
+
+## How to run
+
+### 1. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Apply migrations
+```bash
+python manage.py migrate
+```
+
+### 3. Run in Mock mode (default, no API key needed)
+```bash
+python manage.py demo_generation --strategy mock
+```
+
+Expected output:
+```
+=== Active strategy: MOCK ===
+Using: MockSongGeneratorStrategy
+[1] Calling generate()...
+  taskId  : mock-abc123def456
+  status  : SUCCESS
+  audioUrl: https://mock-storage.example.com/placeholder_audio.mp3
+[2] Calling get_status()...
+  status  : SUCCESS
+Demo complete.
+```
+
+### 4. Run in Suno mode (requires a real API key)
+```bash
+export SUNO_API_KEY="your-real-suno-api-key"
+python manage.py demo_generation --strategy suno
+```
+
+This will:
+1. POST to `https://api.sunoapi.org/api/v1/generate` → prints taskId
+2. GET `https://api.sunoapi.org/api/v1/generate/record-info?taskId=...` → prints status
+
+### 5. Where to put the Suno API key
+**Never commit the key.** Set it as an environment variable:
+```bash
+export SUNO_API_KEY="sk-..."        # Linux/macOS
+set SUNO_API_KEY=sk-...             # Windows CMD
+$env:SUNO_API_KEY="sk-..."          # PowerShell
+```
+
+---
+
+## Strategy Pattern overview
+
+```
+SongGeneratorStrategy  (abstract, strategies.py)
+├── generate(request) → SongGenerationResult
+└── get_status(task_id) → SongGenerationResult
+
+    ├── MockSongGeneratorStrategy  ← offline, deterministic
+    └── SunoSongGeneratorStrategy  ← calls api.sunoapi.org
+```
+
+Strategy is selected once in `generation/selector.py` — no scattered if/else anywhere else.
+
+---
+
+## Run the server
+```bash
+python manage.py createsuperuser
+python manage.py runserver
+# http://127.0.0.1:8000/admin
+```

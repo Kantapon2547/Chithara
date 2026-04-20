@@ -1,0 +1,63 @@
+.navbar {
+  height: 70px;
+  background: white;
+  border-bottom: 1px solid #eee;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+}
+
+/* LEFT */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.logo span {
+  color: #6366f1;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #555;
+  font-weight: 500;
+  margin-right: 15px;
+}
+
+.nav-links a.active {
+  color: #6366f1;
+}
+
+/* RIGHT */
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.quota-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quota-bar {
+  width: 100px;
+  height: 6px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.quota-bar div {
+  height: 100%;
+  background: linear-gradient(to right, #6366f1, #9333ea);
+}
