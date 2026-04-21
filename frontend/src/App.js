@@ -1,51 +1,61 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import PlayerBar from "./components/PlayerBar";
 
 import GeneratePage from "./pages/GeneratePage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
 
-import "./styles/Layout.css";
 import "./App.css";
 
 /* =========================
    AUTH CHECK
 ========================= */
-function isAuthenticated() {
+const isAuthenticated = () => {
   return !!localStorage.getItem("access");
-}
+};
 
 /* =========================
-   PROTECTED ROUTE
+   PRIVATE ROUTE
 ========================= */
 function PrivateRoute({ children }) {
-  return isAuthenticated() ? children : <Navigate to="/login" />;
+  return isAuthenticated() ? children : <Navigate to="/login" replace />;
 }
 
 /* =========================
    APP
 ========================= */
-function App() {
+export default function App() {
+  const location = useLocation();
+
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register";
+
   return (
     <div className="app-layout">
 
-      {/* 🔝 NAVBAR */}
-      {isAuthenticated() && <Navbar />}
+      {/* NAVBAR (hide on login) */}
+      {!isAuthPage && isAuthenticated() && <Navbar />}
 
-      {/* 📄 MAIN CONTENT */}
-      <div className="main-content">
+      {/* MAIN CONTENT */}
+      <div className={isAuthPage ? "" : "main-content"}>
         <Routes>
 
-          {/* 🔓 PUBLIC */}
+          {/* PUBLIC */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* 🔒 PROTECTED */}
+          {/* REDIRECT ROOT */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* PROTECTED */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <PrivateRoute>
-                <GeneratePage />
+                <DashboardPage />
               </PrivateRoute>
             }
           />
@@ -68,24 +78,22 @@ function App() {
             }
           />
 
-          {/* 🔁 FALLBACK */}
+          {/* FALLBACK */}
           <Route
             path="*"
             element={
               isAuthenticated()
-                ? <Navigate to="/generate" />
-                : <Navigate to="/login" />
+                ? <Navigate to="/dashboard" replace />
+                : <Navigate to="/login" replace />
             }
           />
 
         </Routes>
       </div>
 
-      {/* 🎧 PLAYER BAR */}
-      {isAuthenticated() && <PlayerBar />}
+      {/* PLAYER (hide on login) */}
+      {!isAuthPage && isAuthenticated() && <PlayerBar />}
 
     </div>
   );
 }
-
-export default App;

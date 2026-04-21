@@ -146,7 +146,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-GENERATOR_STRATEGY = os.environ.get("GENERATOR_STRATEGY", "mock")
+GENERATOR_STRATEGY = os.getenv("GENERATOR_STRATEGY", "mock").lower()
 
 SUNO_API_KEY = os.environ.get("SUNO_API_KEY", "")
 SUNO_API_BASE_URL = os.environ.get("SUNO_API_BASE_URL", "https://api.sunoapi.org")

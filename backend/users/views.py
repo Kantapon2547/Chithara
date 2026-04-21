@@ -1,28 +1,32 @@
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from quota.models import Quota
 
 
-# 👤 GET CURRENT USER PROFILE
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
     user = request.user
-
-    return Response({
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-    })
+    return Response({"id": user.id, "username": user.username, "email": user.email})
 
 
-# 📊 USER QUOTA (example)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def quota_view(request):
-    # you can later replace this with real logic
+    quota, _ = Quota.objects.get_or_create(
+        user=request.user,
+        defaults={"weekly_limit": 10, "used_this_week": 0, "reset_date": timezone.now().date()}
+    )
+    # weekly reset
+    if (timezone.now().date() - quota.reset_date).days >= 7:
+        quota.used_this_week = 0
+        quota.reset_date = timezone.now().date()
+        quota.save()
+
     return Response({
-        "used": 2,
-        "limit": 10,
-        "remaining": 8,
+        "used":      quota.used_this_week,
+        "limit":     quota.weekly_limit,
+        "remaining": max(0, quota.weekly_limit - quota.used_this_week),
     })

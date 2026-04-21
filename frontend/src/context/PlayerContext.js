@@ -1,73 +1,127 @@
-// src/context/PlayerContext.js
-import React, { createContext, useContext, useState, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useRef, useEffect } from "react";
 
-const PlayerContext = createContext(null);
+const Ctx = createContext(null);
 
 export function PlayerProvider({ children }) {
-  const [currentSong, setCurrentSong] = useState(null);
-  const [isPlaying, setIsPlaying]     = useState(false);
-  const [progress, setProgress]       = useState(0);
-  const [duration, setDuration]       = useState(0);
-  const [volume, setVolume]           = useState(0.8);
-  const audioRef = useRef(null);
+  const [current, setCurrent] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [volume, setVolume] = useState(0.7);
 
-  const play = useCallback((song) => {
-    if (!song.audio_url) return;
-    if (currentSong?.id === song.id) {
-      // toggle
-      if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); }
-      else           { audioRef.current?.play();  setIsPlaying(true);  }
-      return;
-    }
-    setCurrentSong(song);
-    setIsPlaying(true);
-    setProgress(0);
-    if (audioRef.current) {
-      audioRef.current.src = song.audio_url;
-      audioRef.current.volume = volume;
-      audioRef.current.play().catch(() => setIsPlaying(false));
-    }
-  }, [currentSong, isPlaying, volume]);
+  const audioRef = useRef(new Audio());
 
-  const togglePlay = useCallback(() => {
-    if (!audioRef.current) return;
-    if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
-    else           { audioRef.current.play();  setIsPlaying(true);  }
-  }, [isPlaying]);
+  /* =========================
+     SYNC VOLUME
+  ========================= */
+  useEffect(() => {
+    audioRef.current.volume = volume;
+  }, [volume]);
 
-  const seek = useCallback((pct) => {
-    if (!audioRef.current || !duration) return;
-    audioRef.current.currentTime = pct * duration;
-  }, [duration]);
+  /* =========================
+     SYNC PROGRESS
+  ========================= */
+  useEffect(() => {
+    const audio = audioRef.current;
 
-  const changeVolume = useCallback((v) => {
-    setVolume(v);
-    if (audioRef.current) audioRef.current.volume = v;
+    const update = () => {
+      if (audio.duration) {
+        setProgress(audio.currentTime / audio.duration);
+      }
+    };
+
+    audio.addEventListener("timeupdate", update);
+
+    return () => {
+      audio.removeEventListener("timeupdate", update);
+    };
   }, []);
 
-  const skip = useCallback((secs) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.min(Math.max(0, audioRef.current.currentTime + secs), duration);
-  }, [duration]);
+  /* =========================
+     PLAY SONG
+  ========================= */
+  const play = (track, q = []) => {
+    if (!track.audio_url) return;
+
+    setCurrent(track);
+    setQueue(q);
+
+    const audio = audioRef.current;
+    audio.src = track.audio_url;
+    audio.play();
+
+    setIsPlaying(true);
+  };
+
+  /* =========================
+     TOGGLE PLAY
+  ========================= */
+  const toggle = () => {
+    const audio = audioRef.current;
+
+    if (!audio.src) return;
+
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+
+    setIsPlaying(!isPlaying);
+  };
+
+  /* =========================
+     SEEK
+  ========================= */
+  const seek = (p) => {
+    const audio = audioRef.current;
+    if (!audio.duration) return;
+
+    audio.currentTime = p * audio.duration;
+    setProgress(p);
+  };
+
+  /* =========================
+     NEXT / PREV
+  ========================= */
+  const idx = current
+    ? queue.findIndex((t) => t.id === current.id)
+    : -1;
+
+  const next = () => {
+    if (idx >= 0 && idx < queue.length - 1) {
+      play(queue[idx + 1], queue);
+    }
+  };
+
+  const prev = () => {
+    if (idx > 0) {
+      play(queue[idx - 1], queue);
+    }
+  };
 
   return (
-    <PlayerContext.Provider value={{ currentSong, isPlaying, progress, duration, volume, play, togglePlay, seek, changeVolume, skip }}>
+    <Ctx.Provider
+      value={{
+        current,
+        isPlaying,
+        progress,
+        volume,
+        play,
+        toggle,
+        next,
+        prev,
+        seek,
+        setVolume,
+      }}
+    >
       {children}
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={() => {
-          if (audioRef.current) setProgress(audioRef.current.currentTime);
-        }}
-        onDurationChange={() => {
-          if (audioRef.current) setDuration(audioRef.current.duration);
-        }}
-        onEnded={() => setIsPlaying(false)}
-      />
-    </PlayerContext.Provider>
+    </Ctx.Provider>
   );
 }
 
 export function usePlayer() {
-  return useContext(PlayerContext);
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("usePlayer must be inside PlayerProvider");
+  return ctx;
 }

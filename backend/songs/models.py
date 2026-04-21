@@ -1,9 +1,9 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 
 class Song(models.Model):
-    # --- Enumerations ---
     class Genre(models.TextChoices):
         POP = 'pop', 'Pop'
         ROCK = 'rock', 'Rock'
@@ -55,14 +55,12 @@ class Song(models.Model):
     duration = models.IntegerField(help_text="Duration in seconds")
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # ✅ FIXED USER RELATION
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="songs"
     )
 
-    # album relation is OK
     album = models.ForeignKey(
         "albums.Album",
         on_delete=models.SET_NULL,
@@ -76,12 +74,40 @@ class Song(models.Model):
 
 
 class ShareLink(models.Model):
-    song = models.OneToOneField('Song', on_delete=models.CASCADE, null=True, blank=True)
-    album = models.OneToOneField('albums.Album', on_delete=models.CASCADE, null=True, blank=True)
+    song = models.ForeignKey(
+        'Song',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='share_links'
+    )
+
+    album = models.ForeignKey(
+        'albums.Album',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='share_links'
+    )
 
     url = models.URLField()
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        # ต้องมีอย่างใดอย่างหนึ่ง
+        if not self.song and not self.album:
+            raise ValidationError("ShareLink must be linked to either a song or an album")
+
+        # ห้ามมีทั้งคู่
+        if self.song and self.album:
+            raise ValidationError("ShareLink cannot be linked to both song and album")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.url
@@ -93,8 +119,11 @@ class Invitation(models.Model):
         on_delete=models.CASCADE,
         related_name='invitations'
     )
+
     email = models.EmailField()
     status = models.CharField(max_length=20, default='pending')
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Invite for {self.email}"

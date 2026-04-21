@@ -1,6 +1,7 @@
 // src/components/ShareModal.js – FR-16, FR-17, FR-18
 import React, { useState } from "react";
 import { useToast } from "../context/ToastContext";
+import "../styles/ShareModal.css";
 
 export default function ShareModal({ song, onClose }) {
   const { addToast } = useToast();

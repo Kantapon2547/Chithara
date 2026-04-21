@@ -10,38 +10,46 @@ Usage:
     result = generator.generate(request)
 """
 
-import os
+"""
+generation/selector.py
+"""
 
 from django.conf import settings
 
 from .strategies import (
     MockSongGeneratorStrategy,
-    SongGeneratorStrategy,
     SunoSongGeneratorStrategy,
+    SongGeneratorStrategy,
 )
 
 
-def get_generator() -> SongGeneratorStrategy:
+def get_generator(mode: str | None = None) -> SongGeneratorStrategy:
     """
-    Read GENERATOR_STRATEGY from Django settings (falls back to the
-    GENERATOR_STRATEGY environment variable, then defaults to 'mock').
-
-    Accepted values (case-insensitive):
-        'mock'  → MockSongGeneratorStrategy
-        'suno'  → SunoSongGeneratorStrategy
+    Priority:
+    1. request mode (frontend switch)
+    2. settings default
     """
-    strategy_name: str = getattr(
-        settings,
-        "GENERATOR_STRATEGY",
-        os.environ.get("GENERATOR_STRATEGY", "mock"),
-    ).lower().strip()
 
-    if strategy_name == "mock":
-        return MockSongGeneratorStrategy()
-    elif strategy_name == "suno":
+    mode = (mode or "").lower().strip()
+
+    print(f"[Selector] mode={mode}")
+
+    # -----------------------------
+    # 1. FRONTEND OVERRIDE (HIGHEST)
+    # -----------------------------
+    if mode == "suno":
         return SunoSongGeneratorStrategy()
-    else:
-        raise ValueError(
-            f"Unknown GENERATOR_STRATEGY '{strategy_name}'. "
-            "Valid values are: 'mock', 'suno'."
-        )
+
+    if mode == "mock":
+        return MockSongGeneratorStrategy()
+
+    # -----------------------------
+    # 2. SETTINGS FALLBACK (SAFE)
+    # -----------------------------
+    default_mode = getattr(settings, "GENERATOR_STRATEGY", "mock")
+    default_mode = str(default_mode).lower().strip()
+
+    if default_mode == "suno":
+        return SunoSongGeneratorStrategy()
+
+    return MockSongGeneratorStrategy()

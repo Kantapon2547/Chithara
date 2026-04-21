@@ -76,27 +76,31 @@ Follow these steps in order to initialize the system:
 
 ---
 
-## CRUD Operations
+## 🔐 Environment Variables (.env)
 
-Screenshots of CRUD operations are included to demonstrate:
+This project uses a `.env` file to store sensitive configuration.
 
-* Creating new users
+### Required variables:
 
-![](Screenshot/Create_User.jpg)
+```env
+SECRET_KEY=your-django-secret
+DEBUG=True
+SUNO_API_KEY=your-api-key
+```
 
-* Viewing records
+### ⚠️ Important Rules
 
-![](Screenshot/Read_Operation.jpg)
+- Never commit `.env` to Git
+- Never hardcode API keys in source code
+- Always use `python-decouple` to load environment variables
 
-* Updating records
+### Example usage in Django:
 
-![](Screenshot/Update_User.jpg)
+```python
+from decouple import config
 
-* Deleting records
-
-![](Screenshot/Delete_Album.jpg)
-
-xercise 4
+SUNO_API_KEY = config("SUNO_API_KEY")
+```
 
 ### Files added (`generation/` app)
 
@@ -183,3 +187,5 @@ python manage.py createsuperuser
 python manage.py runserver
 # http://127.0.0.1:8000/admin
 ```
+
+

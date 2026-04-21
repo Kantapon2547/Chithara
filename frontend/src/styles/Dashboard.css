@@ -1,0 +1,284 @@
+/* =========================
+   DASHBOARD BASE
+========================= */
+.dash {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  color: #eaeaea;
+  background: radial-gradient(circle at top, #0b0f1a, #05070d);
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* =========================
+   HERO
+========================= */
+.hero-glass {
+  position: relative;
+  padding: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-content h1 {
+  font-size: 42px;
+  margin: 10px 0;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #7c3aed, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.muted {
+  color: #9aa4b2;
+}
+
+.small {
+  font-size: 14px;
+}
+
+/* floating blobs background */
+.hero-blobs {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.25), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.2), transparent 45%);
+  filter: blur(30px);
+}
+
+/* =========================
+   BUTTON
+========================= */
+.primary-btn {
+  margin-top: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-weight: 600;
+  background: linear-gradient(90deg, #7c3aed, #06b6d4);
+  transition: 0.2s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+/* =========================
+   STATS GRID
+========================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.glass-card {
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.glass-card svg {
+  color: #7c3aed;
+  margin-bottom: 8px;
+}
+
+.glass-card .label {
+  font-size: 12px;
+  color: #9aa4b2;
+}
+
+.glass-card h2 {
+  margin: 5px 0 0;
+  font-size: 26px;
+}
+
+.glass-card.highlight {
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+/* =========================
+   SECTION
+========================= */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header a {
+  color: #7c3aed;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =========================
+   SONG GRID
+========================= */
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.song-glass-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  transition: 0.2s ease;
+}
+
+.song-glass-card:hover {
+  transform: translateY(-4px);
+}
+
+.cover {
+  height: 80px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  margin-bottom: 10px;
+}
+
+.song-glass-card h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.song-glass-card p {
+  font-size: 12px;
+  color: #9aa4b2;
+}
+
+.song-glass-card button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  transition: 0.2s ease;
+}
+
+.song-glass-card button:hover {
+  background: rgba(124, 58, 237, 0.4);
+}
+
+/* =========================
+   BOTTOM GRID
+========================= */
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.glass-panel {
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* =========================
+   BARS (ANALYTICS)
+========================= */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+}
+
+.bar {
+  flex: 1;
+  background: linear-gradient(to top, #7c3aed, #06b6d4);
+  border-radius: 6px;
+  opacity: 0.8;
+  transition: 0.2s;
+}
+
+.bar:hover {
+  opacity: 1;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .song-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dash {
+    padding: 20px;
+  }
+
+  .stats-grid,
+  .song-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-content h1 {
+    font-size: 28px;
+  }
+}

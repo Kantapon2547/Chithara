@@ -1,6 +1,26 @@
-.idea/
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Virtual environment
 venv/
+env/
+
+# IDE files
+.idea/
+.vscode/
+*.pycharm
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Testing cache
+.pytest_cache/
+
+# Django
 db.sqlite3
-.env
+
+# Logs
+*.log

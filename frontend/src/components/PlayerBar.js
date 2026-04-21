@@ -1,82 +1,111 @@
-// src/components/PlayerBar.js  – FR-13: play, pause, skip, rewind, fast-forward
-import React from "react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  Heart,
+  Share2,
+} from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
+import "../styles/PlayerBar.css";
 
-function fmt(secs) {
-  if (!secs || isNaN(secs)) return "0:00";
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
+function fmt(s) {
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
 export default function PlayerBar() {
-  const { currentSong, isPlaying, progress, duration, volume, togglePlay, seek, changeVolume, skip } = usePlayer();
+  const {
+    current,
+    isPlaying,
+    toggle,
+    next,
+    prev,
+    progress,
+    seek,
+    volume,
+    setVolume,
+  } = usePlayer();
 
-  if (!currentSong) {
-    return (
-      <div className="player-bar">
-        <div className="player-info" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-          🎵 No song playing — select one from your library
-        </div>
-      </div>
-    );
-  }
+  if (!current) return null;
 
-  const pct = duration > 0 ? (progress / duration) * 100 : 0;
+  const dur = current.duration || 180;
+  const elapsed = dur * progress;
 
   return (
     <div className="player-bar">
-      {/* Song info */}
-      <div className="player-info">
-        <div className="player-thumb">🎵</div>
-        <div className="player-track">
-          <div className="player-track-title">{currentSong.title}</div>
-          <div className="player-track-meta">{currentSong.genre} · {currentSong.mood}</div>
-        </div>
-      </div>
+      <div className="player-container">
 
-      {/* Controls */}
-      <div className="player-controls">
-        <div className="player-btns">
-          {/* Rewind 10s */}
-          <button className="player-btn" onClick={() => skip(-10)} title="Rewind 10s">⏮</button>
-          {/* Rewind 5s */}
-          <button className="player-btn" onClick={() => skip(-5)} title="Rewind 5s">⏪</button>
-          {/* Play/Pause */}
-          <button className="player-btn play" onClick={togglePlay}>
-            {isPlaying ? "⏸" : "▶"}
-          </button>
-          {/* Fast-forward 5s */}
-          <button className="player-btn" onClick={() => skip(5)} title="Forward 5s">⏩</button>
-          {/* Fast-forward 10s */}
-          <button className="player-btn" onClick={() => skip(10)} title="Forward 10s">⏭</button>
-        </div>
-
-        {/* Progress bar */}
-        <div className="player-progress">
-          <span className="progress-time">{fmt(progress)}</span>
-          <div
-            className="progress-bar"
-            onClick={e => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              seek((e.clientX - rect.left) / rect.width);
-            }}
-          >
-            <div className="progress-fill" style={{ width: `${pct}%` }} />
+        {/* TRACK */}
+        <div className="track-info">
+          <div className="cover">
+            {current.title.charAt(0)}
           </div>
-          <span className="progress-time">{fmt(duration)}</span>
-        </div>
-      </div>
 
-      {/* Volume */}
-      <div className="player-volume">
-        <span>🔊</span>
-        <input
-          type="range" min="0" max="1" step="0.05"
-          value={volume}
-          onChange={e => changeVolume(parseFloat(e.target.value))}
-          className="volume-slider"
-        />
+          <div className="meta">
+            <p className="title">{current.title}</p>
+            <p className="artist">
+              {current.artist || "Chithara AI"}
+            </p>
+          </div>
+
+          <button className="icon-btn">
+            <Heart size={16} />
+          </button>
+        </div>
+
+        {/* CONTROLS */}
+        <div className="controls">
+          <div className="buttons">
+            <button onClick={prev}>
+              <SkipBack size={16} />
+            </button>
+
+            <button className="play-btn" onClick={toggle}>
+              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+
+            <button onClick={next}>
+              <SkipForward size={16} />
+            </button>
+          </div>
+
+          <div className="progress">
+            <span>{fmt(elapsed)}</span>
+
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.001}
+              value={progress}
+              onChange={(e) => seek(parseFloat(e.target.value))}
+            />
+
+            <span>{fmt(dur)}</span>
+          </div>
+        </div>
+
+        {/* VOLUME */}
+        <div className="volume">
+          <button>
+            <Share2 size={16} />
+          </button>
+
+          <Volume2 size={16} />
+
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+          />
+        </div>
+
       </div>
     </div>
   );
