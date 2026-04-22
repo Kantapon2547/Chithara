@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useRef, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 
 const Ctx = createContext(null);
 
@@ -11,16 +17,16 @@ export function PlayerProvider({ children }) {
 
   const audioRef = useRef(new Audio());
 
-  /* =========================
-     SYNC VOLUME
-  ========================= */
+  // ==================================================
+  // SYNC VOLUME
+  // ==================================================
   useEffect(() => {
     audioRef.current.volume = volume;
   }, [volume]);
 
-  /* =========================
-     SYNC PROGRESS
-  ========================= */
+  // ==================================================
+  // SYNC PROGRESS
+  // ==================================================
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -37,42 +43,70 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  /* =========================
-     PLAY SONG
-  ========================= */
-  const play = (track, q = []) => {
-    if (!track.audio_url) return;
-
-    setCurrent(track);
-    setQueue(q);
-
-    const audio = audioRef.current;
-    audio.src = track.audio_url;
-    audio.play();
-
-    setIsPlaying(true);
+  // ==================================================
+  // GET AUDIO URL (🔥 FIX)
+  // ==================================================
+  const getAudioUrl = (track) => {
+    return (
+      track.audio_url ||
+      (track.audio_urls && track.audio_urls.length > 0
+        ? track.audio_urls[0]
+        : null)
+    );
   };
 
-  /* =========================
-     TOGGLE PLAY
-  ========================= */
+  // ==================================================
+  // PLAY
+  // ==================================================
+  const play = (track, q = []) => {
+    const url = getAudioUrl(track);
+
+    if (!url) {
+      console.error("❌ No audio source found", track);
+      return;
+    }
+
+    console.log("▶ Playing:", url);
+
+    const audio = audioRef.current;
+
+    // only change src if different
+    if (audio.src !== url) {
+      audio.src = url;
+    }
+
+    audio
+      .play()
+      .then(() => {
+        setCurrent(track);
+        setQueue(q);
+        setIsPlaying(true);
+      })
+      .catch((err) => {
+        console.error("Playback error:", err);
+      });
+  };
+
+  // ==================================================
+  // TOGGLE
+  // ==================================================
   const toggle = () => {
     const audio = audioRef.current;
 
     if (!audio.src) return;
 
-    if (isPlaying) {
-      audio.pause();
-    } else {
+    if (audio.paused) {
       audio.play();
+      setIsPlaying(true);
+    } else {
+      audio.pause();
+      setIsPlaying(false);
     }
-
-    setIsPlaying(!isPlaying);
   };
 
-  /* =========================
-     SEEK
-  ========================= */
+  // ==================================================
+  // SEEK
+  // ==================================================
   const seek = (p) => {
     const audio = audioRef.current;
     if (!audio.duration) return;
@@ -81,9 +115,9 @@ export function PlayerProvider({ children }) {
     setProgress(p);
   };
 
-  /* =========================
-     NEXT / PREV
-  ========================= */
+  // ==================================================
+  // NEXT / PREV
+  // ==================================================
   const idx = current
     ? queue.findIndex((t) => t.id === current.id)
     : -1;
@@ -100,6 +134,26 @@ export function PlayerProvider({ children }) {
     }
   };
 
+  // ==================================================
+  // AUTO END → NEXT
+  // ==================================================
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onEnd = () => {
+      next();
+    };
+
+    audio.addEventListener("ended", onEnd);
+
+    return () => {
+      audio.removeEventListener("ended", onEnd);
+    };
+  });
+
+  // ==================================================
+  // CONTEXT
+  // ==================================================
   return (
     <Ctx.Provider
       value={{

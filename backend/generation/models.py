@@ -26,13 +26,21 @@ class GenerationJob(models.Model):
 
     task_id = models.CharField(max_length=200, unique=True)
     strategy = models.CharField(max_length=20, default="mock")
+
     status = models.CharField(
         max_length=30,
         choices=Status.choices,
         default=Status.PENDING,
     )
+
+    # ✅ MAIN playable audio
     audio_url = models.URLField(blank=True, null=True)
+
+    # 🔥 NEW: store ALL outputs from Suno
+    audio_urls = models.JSONField(default=list, blank=True)
+
     raw_response = models.JSONField(default=dict, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -16,12 +16,18 @@ export default function LibraryPage() {
     fetchSongs().then((d) => setSongs(d.songs || []));
   }, []);
 
+  // =========================================================
+  // FILTER
+  // =========================================================
   const filtered = songs.filter(
     (s) =>
       s.title?.toLowerCase().includes(search.toLowerCase()) ||
-      (s.prompt || "").toLowerCase().includes(search.toLowerCase())
+      (s.genre || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  // =========================================================
+  // TIME FORMAT
+  // =========================================================
   const getTimeAgo = (date) => {
     if (!date) return "Recently";
     const diff = Math.floor((Date.now() - new Date(date)) / 1000);
@@ -31,15 +37,17 @@ export default function LibraryPage() {
     return `${Math.floor(diff / 86400)} days ago`;
   };
 
+  // =========================================================
+  // DELETE
+  // =========================================================
   const handleDelete = async (id) => {
-    const confirmDelete = window.confirm("Delete this song?");
-    if (!confirmDelete) return;
+    if (!window.confirm("Delete this song?")) return;
 
     try {
       await deleteSong(id);
       setSongs((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      console.error("Failed to delete song:", err);
+      console.error("Delete failed:", err);
     }
   };
 
@@ -49,33 +57,42 @@ export default function LibraryPage() {
       {/* HEADER */}
       <div className="library-header">
         <h1>Your Library</h1>
-        <p>{filtered.length} songs · all your AI-generated tracks</p>
+        <p>{filtered.length} songs · AI generated tracks</p>
       </div>
 
       {/* SEARCH */}
       <div className="library-search">
         <input
-          placeholder="🔍 Search by title or prompt..."
+          placeholder="🔍 Search by title or genre..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* GRID */}
+      {/* EMPTY */}
       {filtered.length === 0 ? (
         <div className="empty">
           <h3>No songs found</h3>
-          <p>Try a different search</p>
+          <p>Try another search</p>
         </div>
       ) : (
         <div className="song-grid">
+
           {filtered.map((song, i) => {
             const isCurrent = current?.id === song.id;
 
+            // 🎨 gradient
             const gradient = `linear-gradient(135deg,
               hsl(${260 + i * 20},70%,60%),
               hsl(${220 + i * 15},70%,55%)
             )`;
+
+            // =========================================================
+            // 🔥 FIX: SAFE AUDIO URL SELECTION
+            // =========================================================
+            const audioUrl =
+              (song.audio_urls && song.audio_urls.find(u => u && u.includes(".mp3")))
+              || (song.audio_url && song.audio_url.includes(".mp3") ? song.audio_url : null);
 
             return (
               <div className="song-card" key={song.id}>
@@ -83,16 +100,25 @@ export default function LibraryPage() {
                 {/* COVER */}
                 <div className="cover" style={{ background: gradient }}>
 
-                  {song.generation_status === "ready" && (
+                  {song.generation_status === "READY" && (
                     <div className="status">READY</div>
                   )}
 
-                  {song.audio_url && (
+                  {/* PLAY BUTTON */}
+                  {audioUrl && (
                     <button
                       className="play-btn"
-                      onClick={() =>
-                        isCurrent ? toggle() : play(song, filtered)
-                      }
+                      onClick={() => {
+                        if (!audioUrl) return;
+
+                        // 🔥 FIX: inject correct audio into player
+                        const playableSong = {
+                          ...song,
+                          audio_url: audioUrl,
+                        };
+
+                        isCurrent ? toggle() : play(playableSong, filtered);
+                      }}
                     >
                       {isCurrent && isPlaying ? "⏸" : "▶"}
                     </button>
@@ -102,7 +128,7 @@ export default function LibraryPage() {
                 {/* INFO */}
                 <div className="song-info">
                   <h3>{song.title || "Untitled"}</h3>
-                  <p>{song.prompt || "AI generated track"}</p>
+                  <p>{song.genre || "AI generated track"}</p>
 
                   <div className="tags">
                     {song.genre && <span>{song.genre}</span>}
@@ -115,30 +141,34 @@ export default function LibraryPage() {
                     <span>{getTimeAgo(song.created_at)}</span>
 
                     <div className="actions">
+
+                      {/* DOWNLOAD */}
                       <button
-                        disabled={!song.audio_url}
+                        disabled={!audioUrl}
                         onClick={() => {
-                          if (!song.audio_url) return;
+                          if (!audioUrl) return;
                           const a = document.createElement("a");
-                          a.href = song.audio_url;
-                          a.download = `${song.title}.mp3`;
+                          a.href = audioUrl;
+                          a.download = `${song.title || "song"}.mp3`;
                           a.click();
                         }}
                       >
                         ⬇
                       </button>
 
+                      {/* SHARE */}
                       <button onClick={() => setShareSong(song)}>
                         🔗
                       </button>
 
-                      {/* DELETE BUTTON */}
+                      {/* DELETE */}
                       <button
                         className="delete-btn"
                         onClick={() => handleDelete(song.id)}
                       >
                         🗑
                       </button>
+
                     </div>
                   </div>
                 </div>
@@ -146,6 +176,7 @@ export default function LibraryPage() {
               </div>
             );
           })}
+
         </div>
       )}
 

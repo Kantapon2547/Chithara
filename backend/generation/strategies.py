@@ -1,246 +1,190 @@
-from __future__ import annotations
-
-import time
 import uuid
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Optional
-
 import requests
+from dataclasses import dataclass, field
+from typing import Optional, List
+from abc import ABC, abstractmethod
 from django.conf import settings
 
 
-# ---------------------------------------------------------------------------
+# =========================================================
 # DTOs
-# ---------------------------------------------------------------------------
+# =========================================================
 
 @dataclass
 class SongGenerationRequest:
     title: str
     prompt: str
     style: str = "pop"
-    mood: str = "happy"
-    duration: int = 30
-    make_instrumental: bool = False
 
 
 @dataclass
 class SongGenerationResult:
     task_id: str
-    status: str  # PENDING | SUCCESS | FAILED
+    status: str
     audio_url: Optional[str] = None
+    audio_urls: List[str] = field(default_factory=list)
     error: Optional[str] = None
     metadata: dict = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
-# Abstract Strategy
-# ---------------------------------------------------------------------------
+# =========================================================
+# BASE STRATEGY
+# =========================================================
 
 class SongGeneratorStrategy(ABC):
 
     @abstractmethod
     def generate(self, request: SongGenerationRequest) -> SongGenerationResult:
-        ...
+        pass
 
     @abstractmethod
     def get_status(self, task_id: str) -> SongGenerationResult:
-        ...
+        pass
 
 
-# ---------------------------------------------------------------------------
-# Mock Strategy (DEV ONLY)
-# ---------------------------------------------------------------------------
+# =========================================================
+# MOCK STRATEGY
+# =========================================================
 
 class MockSongGeneratorStrategy(SongGeneratorStrategy):
 
-    MOCK_AUDIO_URL = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    MOCK_URL = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
 
-    def generate(self, request: SongGenerationRequest) -> SongGenerationResult:
-        time.sleep(0.05)
+    def generate(self, request):
+        return SongGenerationResult(
+            task_id=f"mock-{uuid.uuid4().hex[:10]}",
+            status="SUCCESS",
+            audio_url=self.MOCK_URL,
+            audio_urls=[self.MOCK_URL],
+        )
 
-        task_id = f"mock-{uuid.uuid4().hex[:12]}"
-        print(f"[Mock] generate taskId={task_id}")
-
+    def get_status(self, task_id):
         return SongGenerationResult(
             task_id=task_id,
             status="SUCCESS",
-            audio_url=self.MOCK_AUDIO_URL,
-            metadata={"strategy": "mock"},
-        )
-
-    def get_status(self, task_id: str) -> SongGenerationResult:
-        return SongGenerationResult(
-            task_id=task_id,
-            status="SUCCESS",
-            audio_url=self.MOCK_AUDIO_URL,
-            metadata={"strategy": "mock"},
+            audio_url=self.MOCK_URL,
+            audio_urls=[self.MOCK_URL],
         )
 
 
-# ---------------------------------------------------------------------------
-# Suno Strategy (PRODUCTION SAFE)
-# ---------------------------------------------------------------------------
+# =========================================================
+# SUNO STRATEGY (FINAL)
+# =========================================================
 
 class SunoSongGeneratorStrategy(SongGeneratorStrategy):
 
-    TERMINAL_STATUSES = {"SUCCESS", "FAILED"}
-
     def __init__(self):
-        self.api_key = getattr(settings, "SUNO_API_KEY", "")
-        self.base_url = getattr(settings, "SUNO_API_BASE_URL", "https://api.sunoapi.org").rstrip("/")
+        self.api_key = settings.SUNO_API_KEY
+        self.base_url = settings.SUNO_API_BASE_URL.rstrip("/")
+        self.callback_url = getattr(settings, "SUNO_CALLBACK_URL", None)
 
         if not self.api_key:
-            raise ValueError("SUNO_API_KEY is missing")
+            raise ValueError("Missing SUNO_API_KEY")
 
-    # -------------------------
-    # headers
-    # -------------------------
     def _headers(self):
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
-    # -------------------------
+    # -----------------------------------------------------
     # GENERATE
-    # -------------------------
-    def generate(self, request: SongGenerationRequest) -> SongGenerationResult:
+    # -----------------------------------------------------
+    def generate(self, request):
+
         url = f"{self.base_url}/api/v1/generate"
 
         payload = {
-            "customMode": False,
-            "instrumental": request.make_instrumental,
-            "model": "V3_5",
+            "customMode": True,
+            "instrumental": False,
+            "model": "V4_5ALL",
+            "callBackUrl": self.callback_url,
             "prompt": request.prompt,
             "style": request.style,
             "title": request.title,
-            "callBackUrl": "https://example.com/callback",
         }
 
-        print(f"[Suno] POST {url}")
-        print(f"[Suno] payload: {payload}")
+        res = requests.post(url, json=payload, headers=self._headers(), timeout=30)
 
-        try:
-            response = requests.post(url, json=payload, headers=self._headers(), timeout=30)
+        print("🔥 SUNO GENERATE:", res.status_code, res.text)
 
-            # -------------------------
-            # HTTP ERROR
-            # -------------------------
-            if not response.ok:
-                return SongGenerationResult(
-                    task_id="",
-                    status="FAILED",
-                    error=f"HTTP_ERROR_{response.status_code}",
-                    metadata={"raw": response.text},
-                )
-
-            data = response.json()
-            print(f"[Suno] response: {data}")
-
-            # -------------------------
-            # QUOTA ERROR
-            # -------------------------
-            if data.get("code") == 429:
-                return SongGenerationResult(
-                    task_id="",
-                    status="FAILED",
-                    error="INSUFFICIENT_CREDITS",
-                    metadata=data,
-                )
-
-            # -------------------------
-            # INVALID RESPONSE
-            # -------------------------
-            if not data.get("data"):
-                return SongGenerationResult(
-                    task_id="",
-                    status="FAILED",
-                    error="INVALID_RESPONSE",
-                    metadata=data,
-                )
-
-            inner = data.get("data") or {}
-
-            task_id = (
-                inner.get("taskId")
-                or data.get("taskId")
-                or f"suno-{uuid.uuid4().hex[:12]}"
-            )
-
-            return SongGenerationResult(
-                task_id=task_id,
-                status="PENDING",
-                audio_url=None,
-                metadata=data,
-            )
-
-        except Exception as e:
+        if not res.ok:
             return SongGenerationResult(
                 task_id="",
                 status="FAILED",
-                error=str(e),
-                metadata={},
+                error=f"HTTP_{res.status_code}",
+                metadata={"raw": res.text},
             )
 
-    # -------------------------
-    # STATUS
-    # -------------------------
-    def get_status(self, task_id: str) -> SongGenerationResult:
-        url = f"{self.base_url}/api/v1/generate/record-info"
-
-        try:
-            response = requests.get(
-                url,
-                params={"taskId": task_id},
-                headers=self._headers(),
-                timeout=30,
-            )
-
-            if not response.ok:
-                return SongGenerationResult(
-                    task_id=task_id,
-                    status="FAILED",
-                    error=f"HTTP_{response.status_code}",
-                )
-
-            data = response.json()
-            record = data.get("data") or data
-
-            if isinstance(record, list):
-                record = record[0]
-
-            status = (record.get("status") or "PENDING").upper()
-            audio_url = record.get("audioUrl") or record.get("url")
-
-            return SongGenerationResult(
-                task_id=task_id,
-                status=status,
-                audio_url=audio_url,
-                metadata=data,
-            )
-
-        except Exception as e:
-            return SongGenerationResult(
-                task_id=task_id,
-                status="FAILED",
-                error=str(e),
-            )
-
-    # -------------------------
-    # POLLING
-    # -------------------------
-    def poll_until_complete(self, task_id: str, max_attempts=30, interval_seconds=5):
-        for _ in range(max_attempts):
-            result = self.get_status(task_id)
-
-            if result.status in self.TERMINAL_STATUSES:
-                return result
-
-            time.sleep(interval_seconds)
+        data = res.json()
+        task_id = data.get("data", {}).get("taskId")
 
         return SongGenerationResult(
             task_id=task_id,
-            status="FAILED",
-            error="POLL_TIMEOUT",
+            status="PENDING",
+            metadata=data,
+        )
+
+    # -----------------------------------------------------
+    # EXTRACT AUDIO
+    # -----------------------------------------------------
+    def _extract_audio_urls(self, data):
+        urls = []
+
+        try:
+            response = data.get("data", {}).get("response", {})
+            tracks = response.get("sunoData", [])
+
+            for t in tracks:
+                url = (
+                        t.get("sourceAudioUrl")  # ✅ BEST (real CDN)
+                        or t.get("streamAudioUrl")
+                        or t.get("audioUrl")
+                )
+
+                # ✅ ONLY accept real URLs
+                if url and isinstance(url, str) and url.startswith("http"):
+                    urls.append(url)
+
+        except Exception as e:
+            print("❌ Extract error:", e)
+
+        return urls
+
+    # -----------------------------------------------------
+    # STATUS
+    # -----------------------------------------------------
+    def get_status(self, task_id):
+
+        url = f"{self.base_url}/api/v1/generate/record-info"
+
+        res = requests.get(
+            url,
+            params={"taskId": task_id},
+            headers=self._headers(),
+            timeout=30
+        )
+
+        print("🔄 STATUS:", res.status_code, res.text[:300])
+
+        if not res.ok:
+            return SongGenerationResult(
+                task_id=task_id,
+                status="FAILED",
+                error=f"HTTP_{res.status_code}",
+            )
+
+        data = res.json()
+
+        response = data.get("data", {}).get("response", {})
+        status = (response.get("status") or "PENDING").upper()
+
+        audio_urls = self._extract_audio_urls(data)
+
+        return SongGenerationResult(
+            task_id=task_id,
+            status=status,
+            audio_url=audio_urls[0] if audio_urls else None,
+            audio_urls=audio_urls,
+            metadata=data,
         )
