@@ -4,7 +4,8 @@ Handles: song list, generate, poll status, download
 """
 
 import json
-from django.http import JsonResponse, HttpResponse
+import requests
+from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.shortcuts import redirect
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +16,14 @@ from generation.strategies import (
     SunoSongGeneratorStrategy,
     SongGenerationRequest,
 )
+
+import uuid
+from django.utils import timezone
+from datetime import timedelta
 from songs.models import Song
+from django.core.mail import send_mail
+from django.conf import settings
+from songs.models import ShareLink, Invitation
 
 
 # =========================================================
@@ -170,11 +178,7 @@ def generate_song(request):
 
 
 # =========================================================
-# 🔄 POLL STATUS (🔥 MAIN FIX)
-# =========================================================
-
-# =========================================================
-# POLL STATUS (FINAL SAVE FIX)
+# 🔄 POLL STATUS
 # =========================================================
 
 @api_view(["GET"])
@@ -229,7 +233,6 @@ def poll_status(request, task_id):
 # =========================================================
 # ⬇ DOWNLOAD
 # =========================================================
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_song(request, pk):
@@ -240,14 +243,39 @@ def download_song(request, pk):
             user=request.user
         )
     except Song.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
+        return JsonResponse({"error": "Song not found"}, status=404)
 
     job = song.generation_jobs.order_by("-created_at").first()
 
-    if job and job.audio_url:
-        return redirect(job.audio_url)
+    if not job or not job.audio_url:
+        return JsonResponse({"error": "No audio available"}, status=404)
 
-    return JsonResponse({"error": "No audio available"}, status=404)
+    try:
+        # 🔥 DEBUG PRINT
+        print("Downloading from:", job.audio_url)
+
+        r = requests.get(job.audio_url, stream=True, timeout=10)
+
+        if r.status_code != 200:
+            print("Bad response:", r.status_code)
+            return JsonResponse({"error": "Failed to fetch audio"}, status=400)
+
+        content_type = r.headers.get("Content-Type", "audio/mpeg")
+
+        filename = f"{song.title or 'song'}.mp3"
+
+        response = StreamingHttpResponse(
+            r.iter_content(chunk_size=8192),
+            content_type=content_type
+        )
+
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        print("DOWNLOAD ERROR:", str(e))  # 🔥 IMPORTANT
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 # =========================================================
@@ -278,3 +306,88 @@ def song_detail(request, pk):
     if request.method == "DELETE":
         song.delete()
         return JsonResponse({"deleted": pk})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_share_link(request, pk):
+    try:
+        song = Song.objects.get(pk=pk, user=request.user)
+    except Song.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    body = json.loads(request.body)
+    emails = body.get("emails", [])
+
+    # ✅ generate unique token
+    token = str(uuid.uuid4())
+
+    # frontend route (React page)
+    url = f"http://localhost:3000/shared/{token}"
+
+    share = ShareLink.objects.create(
+        song=song,
+        url=url,
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+
+    # ✅ update privacy → SHARED
+    song.privacy_status = Song.Privacy.SHARED
+    song.save(update_fields=["privacy_status"])
+
+    # ✅ send emails
+    for email in emails:
+        Invitation.objects.create(
+            share_link=share,
+            email=email
+        )
+
+        send_mail(
+            subject="🎵 You've been invited to a song",
+            message=f"Listen here:\n{url}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,  # prevents crash
+        )
+
+    return JsonResponse({
+        "url": url,
+        "expires_at": share.expires_at.isoformat()
+    })
+
+
+@api_view(["GET"])
+def get_shared_song(request, token):
+    try:
+        share = ShareLink.objects.select_related("song").get(
+            url__endswith=token,
+            is_active=True
+        )
+    except ShareLink.DoesNotExist:
+        return JsonResponse({"error": "Invalid link"}, status=404)
+
+    if share.expires_at < timezone.now():
+        return JsonResponse({"error": "Link expired"}, status=403)
+
+    return JsonResponse({
+        "song": song_to_dict(share.song)
+    })
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_privacy(request, pk):
+    try:
+        song = Song.objects.get(pk=pk, user=request.user)
+    except Song.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    body = json.loads(request.body)
+    privacy = body.get("privacy_status")
+
+    if privacy not in ["private", "public", "shared"]:
+        return JsonResponse({"error": "Invalid value"}, status=400)
+
+    song.privacy_status = privacy
+    song.save(update_fields=["privacy_status"])
+
+    return JsonResponse({"success": True})

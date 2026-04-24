@@ -1,80 +1,136 @@
-// src/components/ShareModal.js – FR-16, FR-17, FR-18
+// src/components/ShareModal.js
 import React, { useState } from "react";
 import { useToast } from "../context/ToastContext";
+import { createShareLink, updatePrivacy } from "../api/client";
 import "../styles/ShareModal.css";
 
 export default function ShareModal({ song, onClose }) {
   const { addToast } = useToast();
-  const [email, setEmail] = useState("");
 
-  const shareUrl = `${window.location.origin}/shared/${song.id}`;
+  const [emails, setEmails] = useState("");
+  const [privacy, setPrivacy] = useState(song.privacy_status || "private");
+  const [shareUrl, setShareUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function copyLink() {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      addToast("Share link copied to clipboard!", "success");
-    });
-  }
+  // ─────────────────────────────────────────────
+  // 🔒 Update privacy (REAL API)
+  // ─────────────────────────────────────────────
+  const handlePrivacyChange = async (value) => {
+    try {
+      setPrivacy(value);
+      await updatePrivacy(song.id, value);
+      addToast("Privacy updated", "success");
+    } catch (err) {
+      addToast(err.message, "error");
+    }
+  };
 
-  function sendInvite(e) {
+  // ─────────────────────────────────────────────
+  // 📧 Generate link + send invites (REAL API)
+  // ─────────────────────────────────────────────
+  const handleShare = async (e) => {
     e.preventDefault();
-    if (!email) return;
-    // In a real app this would call an API endpoint
-    addToast(`Invitation sent to ${email}`, "success");
-    setEmail("");
-  }
+
+    try {
+      setLoading(true);
+
+      const emailList = emails
+        .split(",")
+        .map(e => e.trim())
+        .filter(Boolean);
+
+      const res = await createShareLink(song.id, emailList);
+
+      setShareUrl(res.url);
+      addToast("Share link created & emails sent!", "success");
+      setEmails("");
+
+    } catch (err) {
+      addToast(err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────
+  // 📋 Copy link
+  // ─────────────────────────────────────────────
+  const copyLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    addToast("Copied!", "success");
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+
         <div className="modal-header">
           <h3>🔗 Share "{song.title}"</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Privacy status – FR-16 */}
+        {/* 🔒 Privacy */}
         <div className="form-group">
-          <label className="form-label">Privacy Status</label>
-          <div style={{ display: "flex", gap: 10 }}>
-            <span className={`badge badge-${song.privacy_status}`}>
-              {song.privacy_status === "public" ? "🌐 Public" : "🔒 Private"}
-            </span>
-            <span style={{ fontSize: "0.8rem", color: "var(--muted)", alignSelf: "center" }}>
-              (Change in Admin panel)
-            </span>
-          </div>
+          <label className="form-label">Privacy</label>
+
+          <select
+            className="form-control"
+            value={privacy}
+            onChange={(e) => handlePrivacyChange(e.target.value)}
+          >
+            <option value="private">🔒 Private</option>
+            <option value="public">🌐 Public</option>
+            <option value="shared">👥 Shared</option>
+          </select>
         </div>
 
-        {/* Shareable link – FR-17 */}
+        {/* 🔗 Share link */}
         <div className="form-group">
-          <label className="form-label">Shareable Link</label>
+          <label className="form-label">Share Link</label>
+
           <div style={{ display: "flex", gap: 8 }}>
             <input
               className="form-control"
-              value={shareUrl}
+              value={shareUrl || "Click generate to create link"}
               readOnly
               style={{ flex: 1 }}
             />
-            <button className="btn btn-primary btn-sm" onClick={copyLink}>Copy</button>
+
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={copyLink}
+              disabled={!shareUrl}
+            >
+              Copy
+            </button>
           </div>
         </div>
 
-        {/* Email invitation – FR-18 */}
+        {/* 📧 Email invite */}
         <div className="form-group">
           <label className="form-label">Invite by Email</label>
-          <form onSubmit={sendInvite} style={{ display: "flex", gap: 8 }}>
+
+          <form onSubmit={handleShare} style={{ display: "flex", gap: 8 }}>
             <input
               className="form-control"
-              type="email"
-              placeholder="email@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              placeholder="a@gmail.com, b@gmail.com"
+              value={emails}
+              onChange={(e) => setEmails(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button className="btn btn-primary btn-sm" type="submit">Send</button>
+
+            <button
+              className="btn btn-primary btn-sm"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Sending..." : "Send"}
+            </button>
           </form>
         </div>
 
-        <button className="btn btn-ghost" style={{ width: "100%" }} onClick={onClose}>
+        <button className="btn btn-ghost" onClick={onClose}>
           Close
         </button>
       </div>

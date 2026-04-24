@@ -3,8 +3,10 @@
 ========================= */
 .gradient-hero {
   position: relative;
+  min-height: 100vh; /* FIX: ensures full height */
   background: radial-gradient(circle at top, #0b0f1a, #05070d);
   color: #e5e7eb;
+  overflow: hidden; /* FIX: prevent blob scroll */
 }
 
 /* glowing blobs */
@@ -43,17 +45,17 @@
   align-items: center;
   justify-content: center;
 
-  padding: 12px; /* closer */
+  padding: 16px;
 }
 
 /* =========================
-   GLASS CARD (IMPROVED)
+   GLASS CARD
 ========================= */
 .glass-card {
   width: 100%;
-  max-width: 460px; /* tighter than before */
+  max-width: 460px;
 
-  padding: 32px; /* reduced padding */
+  padding: 28px;
 
   border-radius: 22px;
 
@@ -63,6 +65,8 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
 
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55);
+
+  animation: fadeIn 0.4s ease; /* FIX: use animation */
 }
 
 /* =========================
@@ -74,7 +78,7 @@
   justify-content: center;
   gap: 10px;
 
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .logo-box {
@@ -120,10 +124,10 @@
    FORM
 ========================= */
 .login-form {
-  margin-top: 22px;
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .input-group label {
@@ -146,13 +150,11 @@
   transition: all 0.2s ease;
 }
 
-/* focus effect */
 .input-box:focus-within {
   border-color: rgba(99, 102, 241, 0.8);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
 
-/* INPUT */
 .input-box input {
   flex: 1;
   background: transparent;
@@ -189,13 +191,45 @@
   box-shadow: 0 12px 25px rgba(124, 58, 237, 0.3);
 }
 
-.login-btn:active {
-  transform: translateY(0px);
-}
-
 .login-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* =========================
+   GOOGLE + DIVIDER
+========================= */
+
+/* divider line */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* center google button */
+.google-btn {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* fix google iframe sizing */
+.google-btn > div {
+  width: 100% !important;
+  display: flex;
+  justify-content: center;
 }
 
 /* =========================
@@ -211,7 +245,7 @@
    FOOTER
 ========================= */
 .login-footer {
-  margin-top: 22px;
+  margin-top: 20px;
   text-align: center;
   font-size: 13px;
   color: #94a3b8;

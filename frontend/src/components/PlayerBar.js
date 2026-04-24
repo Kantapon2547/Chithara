@@ -6,17 +6,18 @@ import {
   Volume2,
   Heart,
   Share2,
+  Download,
 } from "lucide-react";
 
+import { useState } from "react";
 import { usePlayer } from "../context/PlayerContext";
+import { downloadSong } from "../api/client";
 import "../styles/PlayerBar.css";
 
 function fmt(seconds = 0) {
   if (!seconds || isNaN(seconds)) return "0:00";
-
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
@@ -33,8 +34,9 @@ export default function PlayerBar() {
     setVolume,
   } = usePlayer();
 
-  // ❌ IMPORTANT: prevent crash if no song
-  if (!current || !current.audio_url) return null;
+  const [downloading, setDownloading] = useState(false);
+
+  if (!current?.audio_url) return null;
 
   const duration = current.duration || 180;
 
@@ -43,24 +45,40 @@ export default function PlayerBar() {
 
   const elapsed = duration * safeProgress;
 
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+
+    try {
+      await downloadSong(current.id, current.title);
+    } catch (err) {
+      console.error(err);
+      alert("Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="player-bar">
       <div className="player-container">
 
-        {/* TRACK INFO */}
+        {/* ================= LEFT ================= */}
         <div className="track-info">
-          <div className="cover">
-            {current?.title?.charAt(0) || "?"}
-          </div>
+          <div
+            className="cover"
+            style={{
+              backgroundImage: current.cover_image
+                ? `url(${current.cover_image})`
+                : "linear-gradient(135deg, #7c3aed, #06b6d4)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
 
           <div className="meta">
-            <p className="title">
-              {current?.title || "Untitled"}
-            </p>
-
-            <p className="artist">
-              {current?.artist || "Chithara AI"}
-            </p>
+            <p className="title">{current?.title || "Untitled"}</p>
+            <p className="artist">{current?.artist || "Chithara AI"}</p>
           </div>
 
           <button className="icon-btn">
@@ -68,23 +86,23 @@ export default function PlayerBar() {
           </button>
         </div>
 
-        {/* CONTROLS */}
+        {/* ================= CENTER ================= */}
         <div className="controls">
+
           <div className="buttons">
             <button onClick={prev}>
-              <SkipBack size={16} />
+              <SkipBack size={18} />
             </button>
 
             <button className="play-btn" onClick={toggle}>
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
 
             <button onClick={next}>
-              <SkipForward size={16} />
+              <SkipForward size={18} />
             </button>
           </div>
 
-          {/* PROGRESS */}
           <div className="progress">
             <span>{fmt(elapsed)}</span>
 
@@ -99,12 +117,22 @@ export default function PlayerBar() {
 
             <span>{fmt(duration)}</span>
           </div>
+
         </div>
 
-        {/* VOLUME */}
+        {/* ================= RIGHT ================= */}
         <div className="volume">
-          <button>
+
+          <button className="icon-btn">
             <Share2 size={16} />
+          </button>
+
+          <button
+            className="icon-btn"
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            <Download size={16} />
           </button>
 
           <Volume2 size={16} />

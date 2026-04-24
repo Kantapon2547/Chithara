@@ -1,17 +1,24 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
-
-from songs.models import Song
-from generation.services import generate_song
 from django.shortcuts import get_object_or_404
 
+from songs.models import Song
+from generation.factory import get_song_strategy
+from generation.context import SongGenerationContext
+
+
+# =========================================================
+# GENERATE SONG ENDPOINT
+# =========================================================
 
 @api_view(["POST"])
 def generate(request):
     data = request.data
 
-    print("🔥 REQUEST DATA:", data)
+    # -----------------------------
+    # INPUT DEBUG (remove in production later)
+    # -----------------------------
+    # print("REQUEST DATA:", data)
 
     song_id = data.get("song_id")
     prompt = data.get("prompt", "")
@@ -32,31 +39,42 @@ def generate(request):
     song = get_object_or_404(Song, id=song_id)
 
     # -----------------------------
-    # GENERATE
+    # STRATEGY PATTERN (IMPORTANT PART)
+    # -----------------------------
+    strategy = get_song_strategy(mode)
+    context = SongGenerationContext(strategy)
+
+    # Build request object for strategy layer
+    generation_request = {
+        "title": song.title,
+        "prompt": prompt,
+        "style": getattr(song, "style", "pop"),
+    }
+
+    # -----------------------------
+    # GENERATE SONG
     # -----------------------------
     try:
-        job = generate_song(song=song, prompt=prompt, mode=mode)
+        job = context.generate(generation_request)
     except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        return Response(
+            {
+                "error": "generation_failed",
+                "detail": str(e),
+            },
+            status=500,
+        )
 
     # -----------------------------
-    # FAILED CASE
+    # RESPONSE (UNIFIED FORMAT)
     # -----------------------------
-    if job.status == "FAILED":
-        return Response({
+    return Response(
+        {
             "task_id": job.task_id,
             "status": job.status,
-            "error": job.raw_response or "generation_failed",
-        }, status=500)
-
-    # -----------------------------
-    # SUCCESS RESPONSE
-    # -----------------------------
-    return Response({
-        "task_id": job.task_id,
-        "status": job.status,
-
-        # IMPORTANT: support multi-track UI
-        "audio_url": job.audio_url,
-        "audio_urls": getattr(job, "audio_urls", []),
-    }, status=200)
+            "audio_url": job.audio_url,
+            "audio_urls": job.audio_urls,
+            "error": job.error,
+        },
+        status=200,
+    )

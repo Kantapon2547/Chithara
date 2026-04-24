@@ -328,3 +328,25 @@ select:focus {
   background: linear-gradient(135deg, #059669, #10b981);
   box-shadow: 0 4px 14px rgba(5,150,105,0.3);
 }
+
+/* 🔥 Mock mode compact */
+.generate-form textarea {
+  transition: all 0.2s ease;
+}
+
+/* smaller UI for mock */
+.strategy .active {
+  transform: scale(1.02);
+}
+
+/* better spacing */
+.generate-form {
+  gap: 14px;
+}
+
+/* audio */
+audio {
+  width: 100%;
+  margin-top: 10px;
+}
+

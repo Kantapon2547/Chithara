@@ -35,7 +35,7 @@ def get_generator(mode: str | None = None) -> SongGeneratorStrategy:
     print(f"[Selector] mode={mode}")
 
     # -----------------------------
-    # 1. FRONTEND OVERRIDE (HIGHEST)
+    # 1. FRONTEND OVERRIDE
     # -----------------------------
     if mode == "suno":
         return SunoSongGeneratorStrategy()
@@ -44,7 +44,7 @@ def get_generator(mode: str | None = None) -> SongGeneratorStrategy:
         return MockSongGeneratorStrategy()
 
     # -----------------------------
-    # 2. SETTINGS FALLBACK (SAFE)
+    # 2. SETTINGS FALLBACK
     # -----------------------------
     default_mode = getattr(settings, "GENERATOR_STRATEGY", "mock")
     default_mode = str(default_mode).lower().strip()

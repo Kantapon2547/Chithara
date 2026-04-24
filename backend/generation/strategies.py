@@ -15,6 +15,8 @@ class SongGenerationRequest:
     title: str
     prompt: str
     style: str = "pop"
+    mood: Optional[str] = None
+    duration: Optional[int] = None
 
 
 @dataclass
@@ -87,9 +89,9 @@ class SunoSongGeneratorStrategy(SongGeneratorStrategy):
             "Content-Type": "application/json",
         }
 
-    # -----------------------------------------------------
+    # =====================================================
     # GENERATE
-    # -----------------------------------------------------
+    # =====================================================
     def generate(self, request):
 
         url = f"{self.base_url}/api/v1/generate"
@@ -104,20 +106,58 @@ class SunoSongGeneratorStrategy(SongGeneratorStrategy):
             "title": request.title,
         }
 
-        res = requests.post(url, json=payload, headers=self._headers(), timeout=30)
-
-        print("🔥 SUNO GENERATE:", res.status_code, res.text)
-
-        if not res.ok:
+        try:
+            res = requests.post(
+                url,
+                json=payload,
+                headers=self._headers(),
+                timeout=30
+            )
+        except Exception as e:
             return SongGenerationResult(
                 task_id="",
                 status="FAILED",
-                error=f"HTTP_{res.status_code}",
+                error=str(e),
+            )
+
+        print("🔥 SUNO GENERATE:", res.status_code, res.text)
+
+        # Try parse JSON safely
+        try:
+            data = res.json()
+        except Exception:
+            return SongGenerationResult(
+                task_id="",
+                status="FAILED",
+                error="Invalid JSON response from Suno",
                 metadata={"raw": res.text},
             )
 
-        data = res.json()
-        task_id = data.get("data", {}).get("taskId")
+        # =====================================================
+        # HANDLE SUNO API ERROR FORMAT (IMPORTANT FIX)
+        # =====================================================
+        if not res.ok or data.get("code") != 200:
+            return SongGenerationResult(
+                task_id="",
+                status="FAILED",
+                error=data.get("msg", f"HTTP_{res.status_code}"),
+                metadata=data,
+            )
+
+        # =====================================================
+        # SAFE TASK ID EXTRACTION
+        # =====================================================
+        task_id = None
+        if isinstance(data.get("data"), dict):
+            task_id = data["data"].get("taskId")
+
+        if not task_id:
+            return SongGenerationResult(
+                task_id="",
+                status="FAILED",
+                error="Missing taskId from Suno response",
+                metadata=data,
+            )
 
         return SongGenerationResult(
             task_id=task_id,
@@ -125,25 +165,24 @@ class SunoSongGeneratorStrategy(SongGeneratorStrategy):
             metadata=data,
         )
 
-    # -----------------------------------------------------
-    # EXTRACT AUDIO
-    # -----------------------------------------------------
+    # =====================================================
+    # EXTRACT AUDIO URLS
+    # =====================================================
     def _extract_audio_urls(self, data):
         urls = []
 
         try:
-            response = data.get("data", {}).get("response", {})
-            tracks = response.get("sunoData", [])
+            response = (data.get("data") or {}).get("response") or {}
+            tracks = response.get("sunoData") or []
 
             for t in tracks:
                 url = (
-                        t.get("sourceAudioUrl")  # ✅ BEST (real CDN)
-                        or t.get("streamAudioUrl")
-                        or t.get("audioUrl")
+                    t.get("sourceAudioUrl")
+                    or t.get("streamAudioUrl")
+                    or t.get("audioUrl")
                 )
 
-                # ✅ ONLY accept real URLs
-                if url and isinstance(url, str) and url.startswith("http"):
+                if isinstance(url, str) and url.startswith("http"):
                     urls.append(url)
 
         except Exception as e:
@@ -151,32 +190,48 @@ class SunoSongGeneratorStrategy(SongGeneratorStrategy):
 
         return urls
 
-    # -----------------------------------------------------
+    # =====================================================
     # STATUS
-    # -----------------------------------------------------
+    # =====================================================
     def get_status(self, task_id):
 
         url = f"{self.base_url}/api/v1/generate/record-info"
 
-        res = requests.get(
-            url,
-            params={"taskId": task_id},
-            headers=self._headers(),
-            timeout=30
-        )
+        try:
+            res = requests.get(
+                url,
+                params={"taskId": task_id},
+                headers=self._headers(),
+                timeout=30
+            )
+        except Exception as e:
+            return SongGenerationResult(
+                task_id=task_id,
+                status="FAILED",
+                error=str(e),
+            )
 
         print("🔄 STATUS:", res.status_code, res.text[:300])
+
+        try:
+            data = res.json()
+        except Exception:
+            return SongGenerationResult(
+                task_id=task_id,
+                status="FAILED",
+                error="Invalid JSON response",
+            )
 
         if not res.ok:
             return SongGenerationResult(
                 task_id=task_id,
                 status="FAILED",
-                error=f"HTTP_{res.status_code}",
+                error=data.get("msg", f"HTTP_{res.status_code}"),
+                metadata=data,
             )
 
-        data = res.json()
+        response = (data.get("data") or {}).get("response") or {}
 
-        response = data.get("data", {}).get("response", {})
         status = (response.get("status") or "PENDING").upper()
 
         audio_urls = self._extract_audio_urls(data)

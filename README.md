@@ -2,13 +2,58 @@
 
 This project is a Django-based backend for managing AI-generated music, featuring user quotas, album organization, and a sharing system with access control.
 
-## 📊 Traceability & Implementation Notes
-- **Enumerations**: The Song model now includes all Enumerations defined in the Domain Model (Pop, Rock, Happy, Sad, etc.) as selectable choices in the Admin panel.
+## 🧠 Design Pattern: Strategy Pattern
 
-- **Sharing System**: ShareLink and Invitation models have been implemented to satisfy the requirement for controlled access to private content.
+This project uses the Strategy Pattern to handle AI music generation dynamically.
 
-CRUD operations are implemented using the **Django Admin interface**, which allows direct interaction with persisted data in the database.
+### Why Strategy Pattern is used
+- Allows switching between Mock and Suno without changing business logic
+- Keeps generation logic separated and modular
+- Makes testing possible without external API dependency
 
+### Context Class
+A context class manages strategy execution at runtime by holding a reference to a selected strategy and delegating all generation operations to it.
+
+This allows the system to switch between Mock and Suno implementations dynamically without modifying the core service layer.
+
+
+###  Strategy Selection (Factory Layer)
+
+The system uses a selector/factory layer to choose the correct strategy:
+
+- Mock strategy → used for local development/testing
+- Suno strategy → used for real AI generation
+
+
+### 🔐 Authentication
+
+The system supports Google Authentication on the frontend.
+
+- Google OAuth Client ID is used in React environment variables
+- Backend verifies and manages user sessions
+
+⚠️ Sensitive credentials (client secrets, API keys) are never exposed in frontend.
+
+
+---
+## 🧪 Testing Strategy
+
+### Mock Mode Test
+- No external API required
+- Returns deterministic MP3 URL
+- Used for frontend development
+
+### Suno Mode Test
+- Requires valid SUNO_API_KEY
+- Sends real API request
+- Returns task-based async response
+
+### Debugging Output
+- Django management command prints:
+  - taskId
+  - status
+  - audio URLs
+  
 ---
 
 ## 🛠 Features & Entities
@@ -50,29 +95,43 @@ It is recommended to use a virtual environment to manage dependencies.
   source venv/bin/activate
    ```
    
-### 2. Install dependencies.
+### 2️⃣ Backend Setup & Install dependencies.
 
 Dependencies include specific versions (e.g., Django 4.2+) to ensure compatibility.
    ```bash
    pip install -r requirements.txt
    ```
 
-### 3. Database & Admin Setup
+###  Database & Admin Setup
 Follow these steps in order to initialize the system:
    ```bash
-   # 1. Apply database migrations
+   cd backend
+   
+   # Apply database migrations
    python manage.py migrate
 
-  # 2. Create a superuser account (Required for Admin Access)
+  # Create a superuser account
   python manage.py createsuperuser
 
-  # 3. Run the development server
+  # Run the development server
   python manage.py runserver
    ```
+
+### 3️⃣ Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+
+---
 
 ## 🖥️ Usage
 - Open your browser and navigate to: http://127.0.0.1:8000/admin
 - Log in with the superuser credentials you created.
+- Frontend runs at: http://localhost:3000
 
 ---
 
@@ -80,39 +139,30 @@ Follow these steps in order to initialize the system:
 
 This project uses a `.env` file to store sensitive configuration.
 
-### Required variables:
+### Required variables (backend):
 
 ```env
-SECRET_KEY=your-django-secret
-DEBUG=True
+GENERATOR_STRATEGY=suno
+SUNO_CALLBACK_URL="https://example.com/callback"
+SUNO_API_BASE_URL=https://api.sunoapi.org
 SUNO_API_KEY=your-api-key
+GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
-### ⚠️ Important Rules
+### Required variables (frontend):
 
-- Never commit `.env` to Git
-- Never hardcode API keys in source code
-- Always use `python-decouple` to load environment variables
+Users need to create a .env file inside the frontend folder:
 
-### Example usage in Django:
-
-```python
-from decouple import config
-
-SUNO_API_KEY = config("SUNO_API_KEY")
+```env
+REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
-### Files added (`generation/` app)
+🔐 Security reminder :
 
-| File | Purpose |
-|---|---|
-| `generation/strategies.py` | **Strategy interface** + both concrete strategies |
-| `generation/selector.py` | **Centralised strategy selector** – reads `GENERATOR_STRATEGY` |
-| `generation/models.py` | `GenerationJob` model – persists taskId + status |
-| `generation/services.py` | Application service – wires strategy to model |
-| `generation/admin.py` | Django Admin for `GenerationJob` |
-| `generation/migrations/` | DB migration for `GenerationJob` |
-| `generation/management/commands/demo_generation.py` | `manage.py demo_generation` |
+```env
+- REACT_APP_GOOGLE_CLIENT_ID → safe for frontend
+- Google Client ID → backend only
+```
 
 ---
 
@@ -149,12 +199,14 @@ Demo complete.
 ### 4. Run in Suno mode (requires a real API key)
 ```bash
 export SUNO_API_KEY="your-real-suno-api-key"
+
 python manage.py demo_generation --strategy suno
 ```
-
 This will:
+```bash
 1. POST to `https://api.sunoapi.org/api/v1/generate` → prints taskId
 2. GET `https://api.sunoapi.org/api/v1/generate/record-info?taskId=...` → prints status
+```
 
 ### 5. Where to put the Suno API key
 **Never commit the key.** Set it as an environment variable:
@@ -169,23 +221,20 @@ $env:SUNO_API_KEY="sk-..."          # PowerShell
 ## Strategy Pattern overview
 
 ```
-SongGeneratorStrategy  (abstract, strategies.py)
-├── generate(request) → SongGenerationResult
-└── get_status(task_id) → SongGenerationResult
-
-    ├── MockSongGeneratorStrategy  ← offline, deterministic
-    └── SunoSongGeneratorStrategy  ← calls api.sunoapi.org
+SongGeneratorStrategy (abstract base - strategies.py)
+│
+├── generate(request: SongGenerationRequest) → SongGenerationResult
+└── get_status(task_id: str) → SongGenerationResult
+│
+├── MockSongGeneratorStrategy
+│     → Offline strategy (no API calls, deterministic MP3 response)
+│
+└── SunoSongGeneratorStrategy
+      → Production strategy (calls Suno API: api.sunoapi.org)
 ```
 
 Strategy is selected once in `generation/selector.py` — no scattered if/else anywhere else.
 
 ---
-
-## Run the server
-```bash
-python manage.py createsuperuser
-python manage.py runserver
-# http://127.0.0.1:8000/admin
-```
 
 
