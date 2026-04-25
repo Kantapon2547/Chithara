@@ -154,6 +154,7 @@ SUNO_API_BASE_URL = "https://api.sunoapi.org"
 
 CORS_ALLOW_ALL_ORIGINS = True  # dev only
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"

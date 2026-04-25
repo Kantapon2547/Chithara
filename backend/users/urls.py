@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import profile_view, quota_view, google_auth_view
+from .views import profile_view, quota_view, google_auth_view, register_view
 
 
 urlpatterns = [
@@ -12,4 +12,5 @@ urlpatterns = [
     path("profile/", profile_view),
     path("quota/", quota_view),
     path("google-login/", google_auth_view),
+    path("register/", register_view),
 ]

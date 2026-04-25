@@ -1,4 +1,3 @@
-// src/pages/LibraryPage.js
 import React, { useState, useEffect } from "react";
 import {
   fetchSongs,
@@ -10,10 +9,13 @@ import {
 import { usePlayer } from "../context/PlayerContext";
 import ShareModal from "../components/ShareModal";
 import AddToAlbumModal from "../components/AlbumModal";
+import { useNavigate } from "react-router-dom";
 
 import "../styles/LibraryPage.css";
 
 export default function LibraryPage() {
+  const navigate = useNavigate();
+
   const { play, current, isPlaying, toggle } = usePlayer();
 
   const [songs, setSongs] = useState([]);
@@ -26,10 +28,9 @@ export default function LibraryPage() {
   const [selectedSong, setSelectedSong] = useState(null);
 
   const [downloadingId, setDownloadingId] = useState(null);
-
-  // ================= LOCAL COVER STATE =================
   const [covers, setCovers] = useState({});
 
+  // ================= LOAD DATA =================
   useEffect(() => {
     fetchSongs().then((d) => setSongs(d.songs || []));
     fetchAlbums().then((d) => setAlbums(d.albums || []));
@@ -38,16 +39,14 @@ export default function LibraryPage() {
     setCovers(saved);
   }, []);
 
-  // ================= SAVE COVER =================
+  // ================= COVER SAVE =================
   const handleSetCover = (songId, file) => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      const base64 = reader.result;
-
       const updated = {
         ...covers,
-        [songId]: base64,
+        [songId]: reader.result,
       };
 
       setCovers(updated);
@@ -86,7 +85,7 @@ export default function LibraryPage() {
       await deleteSong(id);
       setSongs((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error(err);
     }
   };
 
@@ -96,13 +95,14 @@ export default function LibraryPage() {
       setDownloadingId(song.id);
       await downloadSong(song.id, song.title);
     } catch (err) {
-      console.error("Download failed:", err);
+      console.error(err);
       alert("Download failed");
     } finally {
       setDownloadingId(null);
     }
   };
 
+  // ================= RENDER =================
   return (
     <div className="library">
 
@@ -136,7 +136,7 @@ export default function LibraryPage() {
       {/* SEARCH */}
       <div className="library-search">
         <input
-          placeholder={tab === "songs" ? "🔍 Search songs..." : "🔍 Search albums..."}
+          placeholder={tab === "songs" ? "Search songs..." : "Search albums..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -158,17 +158,11 @@ export default function LibraryPage() {
                 hsl(${220 + i * 15},70%,55%)
               )`;
 
-              const audioUrl =
-                (song.audio_urls &&
-                  song.audio_urls.find((u) => u && u.includes(".mp3"))) ||
-                (song.audio_url && song.audio_url.includes(".mp3")
-                  ? song.audio_url
-                  : null);
+              const audioUrl = song.audio_url || null;
 
               return (
                 <div className="song-card" key={song.id}>
 
-                  {/* COVER */}
                   <div
                     className="cover"
                     style={{
@@ -179,7 +173,7 @@ export default function LibraryPage() {
                       backgroundPosition: "center",
                     }}
                   >
-                    {song.generation_status === "READY" && (
+                    {song.generation_status === "ready" && (
                       <div className="status">READY</div>
                     )}
 
@@ -187,8 +181,8 @@ export default function LibraryPage() {
                       <button
                         className="play-btn"
                         onClick={() => {
-                          const playableSong = { ...song, audio_url: audioUrl };
-                          isCurrent ? toggle() : play(playableSong, filteredSongs);
+                          const playable = { ...song, audio_url: audioUrl };
+                          isCurrent ? toggle() : play(playable, filteredSongs);
                         }}
                       >
                         {isCurrent && isPlaying ? "⏸" : "▶"}
@@ -196,23 +190,15 @@ export default function LibraryPage() {
                     )}
                   </div>
 
-                  {/* INFO */}
                   <div className="song-info">
                     <h3>{song.title || "Untitled"}</h3>
                     <p>{song.genre}</p>
-
-                    <div className="tags">
-                      {song.genre && <span>{song.genre}</span>}
-                      {song.mood && <span>{song.mood}</span>}
-                      {song.occasion && <span>{song.occasion}</span>}
-                    </div>
 
                     <div className="card-footer">
                       <span>{getTimeAgo(song.created_at)}</span>
 
                       <div className="actions">
 
-                        {/* COVER UPLOAD */}
                         <input
                           type="file"
                           accept="image/*"
@@ -223,11 +209,8 @@ export default function LibraryPage() {
                           }
                         />
 
-                        <label htmlFor={`cover-${song.id}`}>
-                          🖼
-                        </label>
+                        <label htmlFor={`cover-${song.id}`}>🖼</label>
 
-                        {/* DOWNLOAD */}
                         <button
                           disabled={!audioUrl || downloadingId === song.id}
                           onClick={() => handleDownload(song)}
@@ -270,9 +253,12 @@ export default function LibraryPage() {
 
                 <div className="album-info">
                   <h3>{album.title}</h3>
-                  <p>{album.song_count} songs</p>
+                  <p>{album.song_count || 0} songs</p>
 
-                  <button>Open</button>
+                  {/* ✅ FIXED NAVIGATION */}
+                  <button onClick={() => navigate(`/albums/${album.id}`)}>
+                    Open
+                  </button>
                 </div>
 
               </div>
@@ -286,9 +272,11 @@ export default function LibraryPage() {
       )}
 
       {selectedSong && (
-        <AddToAlbumModal song={selectedSong} onClose={() => setSelectedSong(null)} />
+        <AddToAlbumModal
+          song={selectedSong}
+          onClose={() => setSelectedSong(null)}
+        />
       )}
-
     </div>
   );
 }

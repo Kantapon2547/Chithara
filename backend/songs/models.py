@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 
 
 class Song(models.Model):
+
     class Genre(models.TextChoices):
         POP = 'pop', 'Pop'
         ROCK = 'rock', 'Rock'
@@ -52,7 +53,9 @@ class Song(models.Model):
         default=Privacy.PRIVATE
     )
 
-    duration = models.IntegerField(help_text="Duration in seconds")
+    duration = models.IntegerField(null=True, blank=True)
+    audio_url = models.URLField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     user = models.ForeignKey(
@@ -61,12 +64,11 @@ class Song(models.Model):
         related_name="songs"
     )
 
-    album = models.ForeignKey(
+    # ✅ FIXED: Spotify-style relationship
+    albums = models.ManyToManyField(
         "albums.Album",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="songs"
+        related_name="songs",
+        blank=True
     )
 
     def __str__(self):
@@ -83,7 +85,7 @@ class ShareLink(models.Model):
     )
 
     album = models.ForeignKey(
-        'albums.Album',
+        "albums.Album",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -97,17 +99,11 @@ class ShareLink(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        # ต้องมีอย่างใดอย่างหนึ่ง
         if not self.song and not self.album:
-            raise ValidationError("ShareLink must be linked to either a song or an album")
+            raise ValidationError("Must link to song or album")
 
-        # ห้ามมีทั้งคู่
         if self.song and self.album:
-            raise ValidationError("ShareLink cannot be linked to both song and album")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+            raise ValidationError("Cannot link both song and album")
 
     def __str__(self):
         return self.url
@@ -126,4 +122,4 @@ class Invitation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Invite for {self.email}"
+        return self.email

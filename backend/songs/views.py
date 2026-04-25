@@ -66,7 +66,7 @@ def song_to_dict(song):
         # 🔥 IMPORTANT
         "task_id": job.task_id if job else None,
         "audio_url": job.audio_url if job else None,
-        "audio_urls": getattr(job, "audio_urls", []) if job else [],
+        "audio_urls": job.audio_urls if job else [],
         "strategy": job.strategy if job else None,
     }
 

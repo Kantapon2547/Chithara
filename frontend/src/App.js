@@ -6,7 +6,9 @@ import PlayerBar from "./components/PlayerBar";
 import GeneratePage from "./pages/GeneratePage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
+import AlbumPage from "./pages/AlbumPage";
 
 import "./App.css";
 
@@ -34,23 +36,26 @@ export default function App() {
     location.pathname === "/login" ||
     location.pathname === "/register";
 
+  const auth = isAuthenticated();
+
   return (
     <div className="app-layout">
 
-      {/* NAVBAR (hide on login) */}
-      {!isAuthPage && isAuthenticated() && <Navbar />}
+      {/* NAVBAR */}
+      {!isAuthPage && auth && <Navbar />}
 
       {/* MAIN CONTENT */}
       <div className={isAuthPage ? "" : "main-content"}>
         <Routes>
 
-          {/* PUBLIC */}
+          {/* PUBLIC ROUTES */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<SignupPage />} />
 
-          {/* REDIRECT ROOT */}
+          {/* ROOT REDIRECT */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* PROTECTED */}
+          {/* PROTECTED ROUTES */}
           <Route
             path="/dashboard"
             element={
@@ -78,11 +83,21 @@ export default function App() {
             }
           />
 
+          {/* 🔥 FIX: ALBUM PAGE ROUTE (THIS WAS MISSING) */}
+          <Route
+            path="/albums/:id"
+            element={
+              <PrivateRoute>
+                <AlbumPage />
+              </PrivateRoute>
+            }
+          />
+
           {/* FALLBACK */}
           <Route
             path="*"
             element={
-              isAuthenticated()
+              auth
                 ? <Navigate to="/dashboard" replace />
                 : <Navigate to="/login" replace />
             }
@@ -91,8 +106,8 @@ export default function App() {
         </Routes>
       </div>
 
-      {/* PLAYER (hide on login) */}
-      {!isAuthPage && isAuthenticated() && <PlayerBar />}
+      {/* PLAYER */}
+      {!isAuthPage && auth && <PlayerBar />}
 
     </div>
   );

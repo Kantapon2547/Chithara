@@ -25,7 +25,7 @@ The system uses a selector/factory layer to choose the correct strategy:
 - Suno strategy → used for real AI generation
 
 
-### 🔐 Authentication
+### Authentication
 
 The system supports Google Authentication on the frontend.
 
@@ -72,6 +72,34 @@ The following entities are implemented with full CRUD functionality via the Djan
 * **Read**: Existing records can be viewed in list and detail views.
 * **Update**: Records can be modified using the edit functionality.
 * **Delete**: Records can be removed from the database.
+
+##  📦  Requirements
+
+Make sure you already install backend dependencies:
+```bash
+asgiref==3.11.1
+certifi==2026.2.25
+charset-normalizer==3.4.7
+Django==5.2.12
+django-cors-headers==4.9.0
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+idna==3.11
+PyJWT==2.12.1
+python-dotenv==1.2.2
+requests==2.33.1
+sqlparse==0.5.5
+typing_extensions==4.15.0
+tzdata==2025.3
+urllib3==2.6.3
+```
+
+###  Google Auth (frontend)
+
+If you're using Google Login, make sure you install the required npm package:
+```bash
+npm install @react-oauth/google
+```
 
 ## 🚀 Install and Run
 
@@ -135,7 +163,91 @@ npm start
 
 ---
 
-## 🔐 Environment Variables (.env)
+## 🔐 Google Login Setup (OAuth Client ID)
+
+
+### Step 1: Open Google Cloud Console
+
+Go to: https://console.cloud.google.com/
+
+- Sign in with your Google account
+- Select or create a project (top project dropdown)
+
+### Step 2: Enable OAuth Setup
+
+In the left menu:
+
+- Go to APIs & Services → OAuth consent screen
+- Click Get Started (if not configured)
+
+Fill in:
+```bash
+App name: Chithara
+User support email: your email
+Audience: External
+Developer contact email: your email
+
+Click Create
+```
+
+### Step 3: Create OAuth Client ID
+
+Go to:
+
+APIs & Services → Credentials → Create Credentials → OAuth Client ID
+
+Then configure:
+
+Application type: Web application
+Name: Chithara Web Client
+
+### Step 4: Add Authorized Origins
+
+Under Authorized JavaScript origins, add:
+
+```bash
+http://localhost:3000
+```
+
+(Optional production)
+```bash
+https://your-domain.com
+```
+
+### Step 5: Add Redirect URIs
+
+Under Authorized redirect URIs, add:
+
+```bash
+http://localhost:3000
+```
+
+(Optional production)
+
+```bash
+https://your-domain.com
+```
+
+### Step 6: Get Client ID
+
+After creation, Google will show:
+
+```bash
+Client ID:
+xxxxxxxxxxxx.apps.googleusercontent.com
+```
+
+### Step 7: Add to Frontend .env
+
+Create .env in frontend:
+
+```bash
+REACT_APP_GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
+```
+
+---
+
+## Environment Variables (.env)
 
 This project uses a `.env` file to store sensitive configuration.
 
@@ -147,6 +259,7 @@ SUNO_CALLBACK_URL="https://example.com/callback"
 SUNO_API_BASE_URL=https://api.sunoapi.org
 SUNO_API_KEY=your-api-key
 GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
 ### Required variables (frontend):
@@ -157,12 +270,12 @@ Users need to create a .env file inside the frontend folder:
 REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
-🔐 Security reminder :
+### Security reminder :
 
-```env
-- REACT_APP_GOOGLE_CLIENT_ID → safe for frontend
-- Google Client ID → backend only
-```
+
+- REACT_APP_GOOGLE_CLIENT_ID → frontend only (safe to expose)
+- GOOGLE_CLIENT_SECRET → backend only (never expose)
+
 
 ---
 
@@ -218,23 +331,48 @@ $env:SUNO_API_KEY="sk-..."          # PowerShell
 
 ---
 
-## Strategy Pattern overview
+## 🛠 Troubleshooting
 
+### 1. Suno API returns 429 - insufficient credits
+
+Error:
+```bash
+{"code":429,"msg":"The current credits are insufficient"}
 ```
-SongGeneratorStrategy (abstract base - strategies.py)
-│
-├── generate(request: SongGenerationRequest) → SongGenerationResult
-└── get_status(task_id: str) → SongGenerationResult
-│
-├── MockSongGeneratorStrategy
-│     → Offline strategy (no API calls, deterministic MP3 response)
-│
-└── SunoSongGeneratorStrategy
-      → Production strategy (calls Suno API: api.sunoapi.org)
+Cause: 
+- Your Suno API account has no credits
+
+Solution:
+
+- Top up your Suno API account or login as a new account to new API key
+- Or switch to mock mode:
+```bash
+python manage.py demo_generation --strategy mock
 ```
 
-Strategy is selected once in `generation/selector.py` — no scattered if/else anywhere else.
+### 2. React Google Login not working
+
+Check:
+
+- ```REACT_APP_GOOGLE_CLIENT_ID``` exists
+
+Fix:
+```bash
+npm install @react-oauth/google
+npm start
+```
+
+Restart frontend after .env changes.
 
 ---
+
+## Strategy Pattern overview
+
+The system uses Strategy Pattern to separate generation logic:
+
+- Mock Strategy → local testing (no API)
+- Suno Strategy → production AI generation s
+- Selection is handled in `generation/selector.py`, keeping service layer clean and extensible.
+
 
 

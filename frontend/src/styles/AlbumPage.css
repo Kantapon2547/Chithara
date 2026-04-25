@@ -1,0 +1,291 @@
+.album-page {
+  padding: 30px;
+  color: #e5e7eb;
+  min-height: 100vh;
+}
+
+.album-header {
+  margin-bottom: 25px;
+}
+
+.album-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.album-header p {
+  color: #9ca3af;
+  margin-top: 5px;
+}
+
+/* SONG GRID */
+.album-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* SONG CARD */
+.album-song-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 14px 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.2s;
+}
+
+.album-song-card:hover {
+  background: rgba(51, 65, 85, 0.6);
+  transform: translateX(4px);
+}
+
+.album-song-card h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.album-song-card p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.album-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.album-actions button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-box {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-box input {
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.album-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.album-actions button {
+  background: rgba(255,255,255,0.08);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.share-box {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.share-box input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+/* =========================
+   PAGE
+========================= */
+.album-page {
+  padding: 30px;
+  color: #e5e7eb;
+  min-height: 100vh;
+  background: #0f172a;
+}
+
+/* =========================
+   HEADER
+========================= */
+.album-header {
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.album-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 10px 0;
+}
+
+.album-header p {
+  color: #9ca3af;
+  margin-top: 5px;
+}
+
+/* =========================
+   COVER IMAGE
+========================= */
+.album-cover {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin: 0 auto 15px auto;
+  display: block;
+
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  transition: 0.3s ease;
+}
+
+.album-cover:hover {
+  transform: scale(1.03);
+}
+
+/* =========================
+   ACTION BUTTONS
+========================= */
+.album-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.album-actions button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.album-actions button:hover {
+  transform: translateY(-2px);
+}
+
+/* optional button styles */
+.album-actions button:nth-child(1) {
+  background: #3b82f6;
+  color: white;
+}
+
+.album-actions button:nth-child(2) {
+  background: #ef4444;
+  color: white;
+}
+
+.album-actions button:nth-child(3) {
+  background: #10b981;
+  color: white;
+}
+
+/* =========================
+   EDIT BOX
+========================= */
+.edit-box {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-box input {
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+/* =========================
+   SONG LIST
+========================= */
+.album-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* =========================
+   SONG CARD
+========================= */
+.album-song-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 16px;
+  border-radius: 12px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  transition: 0.2s ease;
+  cursor: pointer;
+}
+
+.album-song-card:hover {
+  background: rgba(51, 65, 85, 0.7);
+  transform: translateX(4px);
+}
+
+.album-song-card h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.album-song-card p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* =========================
+   PLAY BUTTON
+========================= */
+.play-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.play-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.album-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.album-actions button {
+  background: rgba(255,255,255,0.08);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.album-actions button:hover {
+  background: rgba(255,255,255,0.15);
+}

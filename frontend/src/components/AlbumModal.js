@@ -1,10 +1,15 @@
 // src/components/AlbumModal.js
-import React, { useState, useEffect } from "react";
-import { fetchAlbums, createAlbum, addSongToAlbum } from "../api/client";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  fetchAlbums,
+  createAlbum,
+  addSongToAlbum,
+} from "../api/client";
+
 import { useToast } from "../context/ToastContext";
 import "../styles/AlbumModal.css";
 
-export default function AddToAlbumModal({ song, onClose }) {
+export default function AddToAlbumModal({ song, onClose, onRefresh }) {
   const { addToast } = useToast();
 
   const [albums, setAlbums] = useState([]);
@@ -12,26 +17,47 @@ export default function AddToAlbumModal({ song, onClose }) {
   const [creating, setCreating] = useState(false);
   const [newAlbumTitle, setNewAlbumTitle] = useState("");
 
-  // 🔥 Load albums
-  useEffect(() => {
-    fetchAlbums()
-      .then((d) => setAlbums(d.albums || []))
-      .catch(() => addToast("Failed to load albums", "error"))
-      .finally(() => setLoading(false));
-  }, []);
+  // =========================
+  // LOAD ALBUMS (FIXED)
+  // =========================
+  const loadAlbums = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetchAlbums();
+      setAlbums(res.albums || []);
+    } catch (err) {
+      addToast(err.message || "Failed to load albums", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
 
-  // 🔥 Add to existing album
+  useEffect(() => {
+    loadAlbums();
+  }, [loadAlbums]);
+
+  // =========================
+  // ADD SONG TO ALBUM
+  // =========================
   const handleAdd = async (albumId) => {
     try {
       await addSongToAlbum(albumId, song.id);
-      addToast(`Added to album!`, "success");
+
+      addToast("Added to album!", "success");
+
+      if (onRefresh) {
+        await onRefresh(albumId);
+      }
+
       onClose();
     } catch (err) {
-      addToast(err.message, "error");
+      addToast(err.message || "Failed to add song", "error");
     }
   };
 
-  // 🔥 Create new album + add song
+  // =========================
+  // CREATE + ADD SONG
+  // =========================
   const handleCreate = async () => {
     if (!newAlbumTitle.trim()) return;
 
@@ -44,9 +70,18 @@ export default function AddToAlbumModal({ song, onClose }) {
       await addSongToAlbum(album.id, song.id);
 
       addToast("Album created & song added!", "success");
+
+      await loadAlbums(); // refresh modal list
+
+      setNewAlbumTitle("");
+
+      if (onRefresh) {
+        await onRefresh(album.id);
+      }
+
       onClose();
     } catch (err) {
-      addToast(err.message, "error");
+      addToast(err.message || "Failed to create album", "error");
     } finally {
       setCreating(false);
     }
@@ -56,13 +91,11 @@ export default function AddToAlbumModal({ song, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
 
-        {/* HEADER */}
         <div className="modal-header">
           <h3>➕ Add "{song.title}" to Album</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* EXISTING ALBUMS */}
         <div className="modal-section">
           <h4>Your Albums</h4>
 
@@ -91,7 +124,6 @@ export default function AddToAlbumModal({ song, onClose }) {
           )}
         </div>
 
-        {/* CREATE NEW */}
         <div className="modal-section">
           <h4>Create New Album</h4>
 
@@ -108,12 +140,11 @@ export default function AddToAlbumModal({ song, onClose }) {
               onClick={handleCreate}
               disabled={creating}
             >
-              {creating ? "⏳" : "Create"}
+              {creating ? "Creating..." : "Create"}
             </button>
           </div>
         </div>
 
-        {/* FOOTER */}
         <button className="btn btn-ghost" onClick={onClose}>
           Close
         </button>

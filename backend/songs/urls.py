@@ -11,4 +11,5 @@ urlpatterns = [
     path("share/<int:pk>/", views.create_share_link),
     path("shared/<str:token>/", views.get_shared_song),
     path("privacy/<int:pk>/", views.update_privacy),
+
 ]

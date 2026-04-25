@@ -66,7 +66,7 @@ export default function PlayerBar() {
         {/* ================= LEFT ================= */}
         <div className="track-info">
           <div
-            className="cover"
+            className="player-cover"
             style={{
               backgroundImage: current.cover_image
                 ? `url(${current.cover_image})`
